@@ -1,0 +1,84 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isDriver() {
+      // Robust check: ensure user doc exists before getting data
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'driver')
+        ||
+        exists(/databases/$(database)/documents/driver_profiles/$(request.auth.uid))
+      );
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // App user profiles
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Driver profiles and nested vehicles
+    match /driver_profiles/{userId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isOwner(userId);
+
+      match /vehicles/{vehicleId} {
+        allow read: if isSignedIn();
+        allow create, update, delete: if isOwner(userId);
+      }
+    }
+
+    // Ride requests
+    match /ride_requests/{rideId} {
+      function canReadDoc() {
+        return isSignedIn() && (
+          resource.data.passengerId == request.auth.uid ||
+          resource.data.driverId == request.auth.uid ||
+          // RELAXED: Allow anyone to read pending requests
+          resource.data.status == 'pending'
+        );
+      }
+
+      allow get: if canReadDoc();
+
+      allow list: if isSignedIn() && (
+        // RELAXED: Allow anyone to list pending requests
+        (request.query.where('status', '==', 'pending')) ||
+        
+        (isDriver() && (
+          request.query.where('driverId', '==', request.auth.uid)
+        )) ||
+        (request.query.where('passengerId', '==', request.auth.uid))
+      );
+
+      allow create: if isSignedIn()
+                    && request.resource.data.passengerId == request.auth.uid
+                    && request.resource.data.driverId == null
+                    && request.resource.data.status == 'pending';
+
+      allow update, delete: if isSignedIn() && (
+        request.auth.uid == resource.data.passengerId ||
+        (resource.data.driverId != null && request.auth.uid == resource.data.driverId) ||
+        // RELAXED: Allow taking a ride without isDriver check
+        (
+             resource.data.driverId == null
+          && request.resource.data.driverId == request.auth.uid
+          && request.resource.data.status == 'accepted'
+          && resource.data.status == 'pending')
+      );
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

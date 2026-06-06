@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "824254253366",
+    "project_id": "safe-go-583fa",
+    "storage_bucket": "safe-go-583fa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:824254253366:android:2a7251e2ea50006e9dcb97",
+        "android_client_info": {
+          "package_name": "com.example.safe_go"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtsOAsGlQ_-rboJFRIKPah6iB8X8ngCi4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
